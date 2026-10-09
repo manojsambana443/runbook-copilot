@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+eval/results.json
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars

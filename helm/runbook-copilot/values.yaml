@@ -1,0 +1,33 @@
+image:
+  repository: <your-acr-name>.azurecr.io/runbook-copilot
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Kubernetes secret holding the key: kubectl create secret generic openai-api-key --from-literal=OPENAI_API_KEY=...
+secretName: openai-api-key
+
+env:
+  CHAT_MODEL: gpt-4o-mini
+  EMBEDDING_MODEL: text-embedding-3-small
+  RETRIEVAL_MODE: hybrid
+  MIN_CONFIDENCE: "0.6"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+service:
+  type: ClusterIP
+  port: 80

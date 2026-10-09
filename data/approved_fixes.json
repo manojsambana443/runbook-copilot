@@ -1,0 +1,12 @@
+[
+  {"id": "FIX-001", "title": "Rolling restart of the deployment", "description": "Run a rolling restart (kubectl rollout restart) after confirming dependencies are healthy again.", "supported_by": ["runbooks/crashloop-transient-dependency.md"]},
+  {"id": "FIX-002", "title": "Raise container memory request and limit", "description": "Increase the memory request and limit for the affected container in the Helm values and redeploy.", "supported_by": ["runbooks/pod-oomkilled.md"]},
+  {"id": "FIX-003", "title": "Scale out replicas / raise HPA ceiling", "description": "Increase replica count or the HPA maximum for the affected deployment.", "supported_by": ["runbooks/aks-pod-high-cpu.md"]},
+  {"id": "FIX-004", "title": "Correct image tag or refresh registry pull credentials", "description": "Fix the image tag, or re-attach the registry pull secret / AcrPull role, then redeploy.", "supported_by": ["runbooks/imagepullbackoff.md"]},
+  {"id": "FIX-005", "title": "Fix connection pool and raise database connection limit", "description": "Reduce per-pod pool size, restart leaking pods, and raise max_connections within the approved range.", "supported_by": ["runbooks/mysql-too-many-connections.md"]},
+  {"id": "FIX-006", "title": "Free disk space safely", "description": "Compress or rotate logs and prune unused container images and temp files. Never delete application data.", "supported_by": ["runbooks/vm-disk-full.md"]},
+  {"id": "FIX-007", "title": "Renew TLS certificate and reload the proxy", "description": "Renew the certificate (Key Vault or certbot), deploy it, and reload Nginx.", "supported_by": ["runbooks/ssl-certificate-expiry.md"]},
+  {"id": "FIX-008", "title": "Release a stale Terraform state lock", "description": "After confirming no run is active, release the lock with terraform force-unlock using the lock ID.", "supported_by": ["runbooks/terraform-state-lock.md"]},
+  {"id": "FIX-009", "title": "Roll back to the last known good release", "description": "Roll back the deployment (helm rollback or redeploy the previous tag) and open a defect.", "supported_by": ["runbooks/bad-release-5xx-spike.md"]},
+  {"id": "FIX-010", "title": "Repair Nginx upstream and reload configuration", "description": "Correct the upstream target or health check, validate with nginx -t, then reload.", "supported_by": ["runbooks/nginx-502-bad-gateway.md"]}
+]

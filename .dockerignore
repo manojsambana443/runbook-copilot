@@ -1,0 +1,7 @@
+.git
+.env
+tests
+terraform
+helm
+__pycache__
+.pytest_cache

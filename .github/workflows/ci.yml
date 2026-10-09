@@ -1,0 +1,86 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to AKS after the eval gate passes"
+        type: boolean
+        default: false
+
+env:
+  IMAGE_NAME: runbook-copilot
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Unit and offline tests
+        run: python -m pytest -q
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image (no push)
+        run: docker build -t $IMAGE_NAME:ci .
+
+  eval-gate:
+    # Runs real model calls, so only on main or manual runs, and only when the secret exists.
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Evaluation gate (fails the build if accuracy drops below 80%)
+        if: env.OPENAI_API_KEY != ''
+        run: python -m eval.run_eval --min-accuracy 0.8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: eval/results.json
+          if-no-files-found: ignore
+
+  deploy:
+    needs: eval-gate
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push image to ACR
+        run: |
+          az acr login --name ${{ vars.ACR_NAME }}
+          docker build -t ${{ vars.ACR_NAME }}.azurecr.io/$IMAGE_NAME:${{ github.sha }} .
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/$IMAGE_NAME:${{ github.sha }}
+      - name: Deploy with Helm
+        run: |
+          az aks get-credentials --resource-group ${{ vars.AKS_RESOURCE_GROUP }} --name ${{ vars.AKS_NAME }} --overwrite-existing
+          helm upgrade --install runbook-copilot helm/runbook-copilot \
+            --set image.repository=${{ vars.ACR_NAME }}.azurecr.io/$IMAGE_NAME \
+            --set image.tag=${{ github.sha }}
